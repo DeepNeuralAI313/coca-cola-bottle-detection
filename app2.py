@@ -6,12 +6,10 @@ import os
 from roboflow import Roboflow
 import tempfile
 import streamlit.components.v1 as components
-from ultralytics import YOLO
-
 # Load model details from pickle file
 def load_roboflow_model():
     try:
-        with open(os.path.join('model_save', 'model_details.pkl'), 'rb') as f:
+        with open('model_details.pkl'), 'rb') as f:
             model_info = pickle.load(f)
         
         # Recreate the model using saved information
@@ -23,36 +21,16 @@ def load_roboflow_model():
         st.error(f"Error loading model: {e}")
         return None
 
-# Load YOLOv8 models
-def load_yolov8_models():
-    model_beer = YOLO("beerbottle.pt")  # Replace with your beer bottle model path
-    return model_beer
-
-# Function to draw bounding boxes on the image
-def draw_boxes(image, results, color, label_prefix=""):
-    for result in results:
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])  # Get bounding box coordinates
-            confidence = box.conf[0]  # Get confidence score
-            class_label = result.names[int(box.cls[0])]  # Get class label
-            # Draw bounding box
-            cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
-            # Add label and confidence
-            text = f"{label_prefix}{class_label} {confidence:.2f}"
-            cv2.putText(image, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 # Main Streamlit app
 def main():
-    st.title('Coca Cola and Beer Bottle Detection')
+    st.title('Coca Cola Bottle Detection')
     
-    # Load the Roboflow model
+    # Load the model
     loaded_model = load_roboflow_model()
     
     if loaded_model is None:
-        st.error("Could not load the Roboflow model. Please check your model files.")
+        st.error("Could not load the model. Please check your model files.")
         return
-
-    # Load YOLOv8 models
-    model_beer = load_yolov8_models()
 
     # Image uploader
     uploaded_image = st.file_uploader(
@@ -77,16 +55,16 @@ def main():
             temp_file.write(file_bytes)
             temp_file_path = temp_file.name
 
-        # Predict using the Roboflow model (Coca-Cola)
+        # Predict using the loaded model
         try:
             result = loaded_model.predict(temp_file_path, confidence=40, overlap=30).json()
         except Exception as e:
-            st.error(f"Error during Roboflow prediction: {e}")
+            st.error(f"Error during prediction: {e}")
             return
 
         # Check if predictions exist
         if result.get('predictions'):
-            # Draw bounding boxes for Coca-Cola
+            # Draw bounding boxes
             for prediction in result['predictions']:
                 # Convert from [x, y, width, height] to [x1, y1, x2, y2]
                 x1 = int(prediction['x'] - prediction['width'] / 2)
@@ -98,37 +76,31 @@ def main():
                 cv2.rectangle(
                     result_image, 
                     (x1, y1), (x2, y2), 
-                    color=(0, 255, 0),  # Green for Coca-Cola
+                    color=(255, 0, 0), 
                     thickness=2
                 )
                 
                 # Add label
-                label = f"Coca-Cola {prediction['confidence']:.2f}"
+                label = f"{prediction['class']} {prediction['confidence']:.2f}"
                 cv2.putText(
                     result_image, 
                     label, 
                     (x1, y1 - 10), 
                     cv2.FONT_HERSHEY_SIMPLEX, 
                     0.9, 
-                    (0, 255, 0), 
+                    (255, 0, 0), 
                     2
                 )
 
-        # Predict using YOLOv8 models
-        # results_cocacola = model_cocacola(image)
-        results_beer = model_beer(image)
-
-        # # Draw bounding boxes for Coca-Cola (YOLOv8)
-        # draw_boxes(result_image, results_cocacola, (0, 255, 0), "Coca-Cola: ")
-
-        # Draw bounding boxes for Beer (YOLOv8)
-        draw_boxes(result_image, results_beer, (0, 0, 255), "Beer: ")
-
-        # Convert from BGR to RGB for Streamlit display
-        result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+            # Convert from BGR to RGB for Streamlit display
+            result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+            
+            # Display the image
+            st.image(result_image_rgb, caption='Detected Coca Cola Bottles')
         
-        # Display the image
-        st.image(result_image_rgb, caption='Detected Coca Cola and Beer Bottles')
+        else:
+            st.warning("No bottles detected in the image.")
+
 
 def nev():
     st.set_page_config(layout="wide")
@@ -388,6 +360,7 @@ def footer():
     </footer>
 </body>
 """)
+
 
 
 # Run the app
