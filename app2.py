@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 # Load model details from pickle file
 def load_roboflow_model():
     try:
-        with open('model_details.pkl'), 'rb') as f:
+        with open('model_details.pkl', 'rb') as f:
             model_info = pickle.load(f)
         
         # Recreate the model using saved information
